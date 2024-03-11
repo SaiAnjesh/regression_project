@@ -1,14 +1,16 @@
 # Regression Project
 
-Problem1—Predicting Income using Logistic Regression and Decision Trees
-For this problem, you will be using the Adult dataset from here (https://archive.ics.uci.edu/ml/datasets/adult ) and the goal is to use a logistic regression and a decision tree model to predict the binary variable income (>50K or <=50K) based on the other attributes in the dataset. Read the attribute information from here then click on the datafolder and download “adult.data”.
-1.
-(0.5 pt) Load adult.data into a dataframe in R. Note that adult.data does not have column names in the first line so you need to set header=FALSE when you read the data then manually set the column names. Inspect the dataset using “str” and “summary” functions. What is the type of each variable in the dataset numeric/continuous or categorical/discrete? For each categorical variable explain whether it is nominal or ordinal.
-2.
-(0.5 pt) There are some missing values in this dataset represented as “ ?” (Note: there is a space before
-?) . Make sure that all “ ?” are converted to NAs. You can do so by setting “na.strings” parameters in “read.csv” to “ ?”.
-3.
-(1pt) Set the random seed, and split the data to train/test. Use 80% of samples for training and the remaining 20% for testing. You can use “sample” (similar to what we did in slide 37 of week 6 lecture but you need to adjust1000 and 900 to the number of observations in your dataset and the size of the sample) or alternatively, you can use “createDataPartition” method from caret package.
+## Problem1—Predicting Income using Logistic Regression and Decision Trees
+
+### For this problem, you will be using the Adult dataset from here (https://archive.ics.uci.edu/ml/datasets/adult ) and the goal is to use a logistic regression and a decision tree model to predict the binary variable income (>50K or <=50K) based on the other attributes in the dataset. Read the attribute information from here then click on the datafolder and download “adult.data”.
+
+1. (0.5 pt) Load adult.data into a dataframe in R. Note that adult.data does not have column names in the first line so you need to set header=FALSE when you read the data then manually set the column names. Inspect the dataset using “str” and “summary” functions. What is the type of each variable in the dataset numeric/continuous or categorical/discrete? For each categorical variable explain whether it is nominal or ordinal.
+
+
+2. (0.5 pt) There are some missing values in this dataset represented as “ ?” (Note: there is a space before?). Make sure that all “ ?” are converted to NAs. You can do so by setting “na.strings” parameters in “read.csv” to “ ?”.
+
+3. (1pt) Set the random seed, and split the data to train/test. Use 80% of samples for training and the remaining 20% for testing. You can use “sample” (similar to what we did in slide 37 of week 6 lecture but you need to adjust1000 and 900 to the number of observations in your dataset and the size of the sample) or alternatively, you can use “createDataPartition” method from caret package.
+
 4.
 (3pt) Read the section on “Handling Missing Data” in chapter 13 of the textbook Machine Learning with R. Find which columns/variables in the train and test set have missing values. Then decide about how you want to impute the missing values in these columns. Explain why you chose this imputation approach.
 5.
