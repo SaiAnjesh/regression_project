@@ -1,0 +1,30 @@
+---
+title: "Assignment_3_Problem_2"
+author: "Sai Anjesh"
+date: "2024-03-12"
+output: html_document
+---
+
+```{r}
+## Essential modules to import
+library(dplyr)
+```
+
+### For this problem we are going to use UCI’s student performance dataset. The dataset is a recording of student grades in math and language and includes attributes related to student demographics and school related features. Click on the above link, then go to “Data Folder” and download and unzip “student.zip”. You will be using student-mat.csv file. The goal is to create a regression model to forecast student final grade in math “G3” based on the other attributes.
+
+
+##### 11. (0.5pt) Read the dataset into a dataframe. Ensure that you are using a correct delimiter to read the data correctly and set the “sep” option in read.csv accordingly.
+
+```{r}
+# Input data paths
+student_mat_data_path <- "D:/UIS/Studies/Semester4/CSC532/Assignments/Assignment3/regression_project/input_datasets/student+performance/student/student-mat.csv"
+```
+
+
+```{r}
+# Reading data
+student_mat_data <- read.csv(file = student_mat_data_path, 
+                             header = TRUE,
+                             sep = ";")
+```
+

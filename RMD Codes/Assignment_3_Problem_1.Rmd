@@ -4,3 +4,87 @@ author: "Sai Anjesh"
 date: "2024-03-11"
 output: html_document
 ---
+
+```{r}
+## Essential modules to import
+library(dplyr)
+```
+
+
+# Problem1—Predicting Income using Logistic Regression and Decision Trees
+
+### For this problem, you will be using the Adult dataset from here (https://archive.ics.uci.edu/ml/datasets/adult ) and the goal is to use a logistic regression and a decision tree model to predict the binary variable income (>50K or <=50K) based on the other attributes in the dataset. Read the attribute information from here then click on the datafolder and download “adult.data”.
+
+##### 1. (0.5 pt) Load adult.data into a dataframe in R. Note that adult.data does not have column names in the first line so you need to set header=FALSE when you read the data then manually set the column names. Inspect the dataset using “str” and “summary” functions. What is the type of each variable in the dataset numeric/continuous or categorical/discrete? For each categorical variable explain whether it is nominal or ordinal.
+
+```{r}
+# Input data paths
+adult_data_path <- "D:/UIS/Studies/Semester4/CSC532/Assignments/Assignment3/regression_project/input_datasets/adult/adult.data"
+```
+
+
+```{r}
+# Reading data
+adult_data <- read.csv(file = adult_data_path, 
+                       header = FALSE,
+                       na.strings = " ?")
+
+# Ccolumn names
+adult_data_header <- c(
+  "age",
+  "workclass",
+  "fnlwgt",
+  "education",
+  "education_num",
+  "marital_status",
+  "occupation",
+  "relationship",
+  "race",
+  "sex",
+  "capital_gain",
+  "capital_loss",
+  "hours_per_week",
+  "native_country",
+  "income"
+)
+
+# Updating the header
+colnames(adult_data) <- adult_data_header
+
+```
+
+
+ Let us check the structure and summary of the dataset.
+ 
+```{r}
+str(adult_data)
+
+summary(adult_data)
+```
+
+
+##### 2. (0.5 pt) There are some missing values in this dataset represented as “ ?” (Note: there is a space before?). Make sure that all “ ?” are converted to NAs. You can do so by setting “na.strings” parameters in “read.csv” to “ ?”.
+
+Yes answer for this question is updated in the previous answer.
+
+##### 3. (1pt) Set the random seed, and split the data to train/test. Use 80% of samples for training and the remaining 20% for testing. You can use “sample” (similar to what we did in slide 37 of week 6 lecture but you need to adjust 1000 and 900 to the number of observations in your dataset and the size of the sample) or alternatively, you can use “createDataPartition” method from caret package.
+
+
+```{r}
+# Setting the seed to 123
+# to repeat the same random sample from our dataset
+set.seed(123)
+
+# Let us use the sample technique from lecture notes pdf
+num_of_recs <- nrow(adult_data)
+train_split_perc <- 0.8
+train_split_size <- round(x = train_split_perc * num_of_recs, digits = 0)
+train_sample_index <- sample(x = num_of_recs, size = train_split_size, replace = FALSE)
+
+# Let us split the data
+adult_data_train <- adult_data[train_sample_index, ]
+adult_data_test <- adult_data[-train_sample_index, ]
+```
+
+ 
+ 

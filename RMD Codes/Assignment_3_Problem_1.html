@@ -357,7 +357,110 @@ display: none;
 </div>
 
 
+<pre class="r"><code>## Essential modules to import
+library(dplyr)</code></pre>
+<pre><code>## Warning: package &#39;dplyr&#39; was built under R version 4.2.3</code></pre>
+<pre><code>## 
+## Attaching package: &#39;dplyr&#39;</code></pre>
+<pre><code>## The following objects are masked from &#39;package:stats&#39;:
+## 
+##     filter, lag</code></pre>
+<pre><code>## The following objects are masked from &#39;package:base&#39;:
+## 
+##     intersect, setdiff, setequal, union</code></pre>
+<div id="problem1predicting-income-using-logistic-regression-and-decision-trees" class="section level1">
+<h1>Problem1—Predicting Income using Logistic Regression and Decision
+Trees</h1>
+<div id="for-this-problem-you-will-be-using-the-adult-dataset-from-here-httpsarchive.ics.uci.edumldatasetsadult-and-the-goal-is-to-use-a-logistic-regression-and-a-decision-tree-model-to-predict-the-binary-variable-income-50k-or-50k-based-on-the-other-attributes-in-the-dataset.-read-the-attribute-information-from-here-then-click-on-the-datafolder-and-download-adult.data." class="section level3">
+<h3>For this problem, you will be using the Adult dataset from here (<a href="https://archive.ics.uci.edu/ml/datasets/adult" class="uri">https://archive.ics.uci.edu/ml/datasets/adult</a> ) and the
+goal is to use a logistic regression and a decision tree model to
+predict the binary variable income (&gt;50K or &lt;=50K) based on the
+other attributes in the dataset. Read the attribute information from
+here then click on the datafolder and download “adult.data”.</h3>
+<div id="pt-load-adult.data-into-a-dataframe-in-r.-note-that-adult.data-does-not-have-column-names-in-the-first-line-so-you-need-to-set-headerfalse-when-you-read-the-data-then-manually-set-the-column-names.-inspect-the-dataset-using-str-and-summary-functions.-what-is-the-type-of-each-variable-in-the-dataset-numericcontinuous-or-categoricaldiscrete-for-each-categorical-variable-explain-whether-it-is-nominal-or-ordinal." class="section level5">
+<h5>1. (0.5 pt) Load adult.data into a dataframe in R. Note that
+adult.data does not have column names in the first line so you need to
+set header=FALSE when you read the data then manually set the column
+names. Inspect the dataset using “str” and “summary” functions. What is
+the type of each variable in the dataset numeric/continuous or
+categorical/discrete? For each categorical variable explain whether it
+is nominal or ordinal.</h5>
+<pre class="r"><code># Input data paths
+adult_data_path &lt;- &quot;D:/UIS/Studies/Semester4/CSC532/Assignments/Assignment3/regression_project/input_datasets/adult/adult.data&quot;</code></pre>
+<pre class="r"><code># Reading data
+adult_data &lt;- read.csv(adult_data_path, header = FALSE)
 
+# Ccolumn names
+adult_data_header &lt;- c(
+  &quot;age&quot;,
+  &quot;workclass&quot;,
+  &quot;fnlwgt&quot;,
+  &quot;education&quot;,
+  &quot;education_num&quot;,
+  &quot;marital_status&quot;,
+  &quot;occupation&quot;,
+  &quot;relationship&quot;,
+  &quot;race&quot;,
+  &quot;sex&quot;,
+  &quot;capital_gain&quot;,
+  &quot;capital_loss&quot;,
+  &quot;hours_per_week&quot;,
+  &quot;native_country&quot;,
+  &quot;income&quot;
+)
+
+# Updating the header
+colnames(adult_data) &lt;- adult_data_header</code></pre>
+<p>Let us check the structure and summary of the dataset.</p>
+<pre class="r"><code>str(adult_data)</code></pre>
+<pre><code>## &#39;data.frame&#39;:    32561 obs. of  15 variables:
+##  $ age           : int  39 50 38 53 28 37 49 52 31 42 ...
+##  $ workclass     : chr  &quot; State-gov&quot; &quot; Self-emp-not-inc&quot; &quot; Private&quot; &quot; Private&quot; ...
+##  $ fnlwgt        : int  77516 83311 215646 234721 338409 284582 160187 209642 45781 159449 ...
+##  $ education     : chr  &quot; Bachelors&quot; &quot; Bachelors&quot; &quot; HS-grad&quot; &quot; 11th&quot; ...
+##  $ education_num : int  13 13 9 7 13 14 5 9 14 13 ...
+##  $ marital_status: chr  &quot; Never-married&quot; &quot; Married-civ-spouse&quot; &quot; Divorced&quot; &quot; Married-civ-spouse&quot; ...
+##  $ occupation    : chr  &quot; Adm-clerical&quot; &quot; Exec-managerial&quot; &quot; Handlers-cleaners&quot; &quot; Handlers-cleaners&quot; ...
+##  $ relationship  : chr  &quot; Not-in-family&quot; &quot; Husband&quot; &quot; Not-in-family&quot; &quot; Husband&quot; ...
+##  $ race          : chr  &quot; White&quot; &quot; White&quot; &quot; White&quot; &quot; Black&quot; ...
+##  $ sex           : chr  &quot; Male&quot; &quot; Male&quot; &quot; Male&quot; &quot; Male&quot; ...
+##  $ capital_gain  : int  2174 0 0 0 0 0 0 0 14084 5178 ...
+##  $ capital_loss  : int  0 0 0 0 0 0 0 0 0 0 ...
+##  $ hours_per_week: int  40 13 40 40 40 40 16 45 50 40 ...
+##  $ native_country: chr  &quot; United-States&quot; &quot; United-States&quot; &quot; United-States&quot; &quot; United-States&quot; ...
+##  $ income        : chr  &quot; &lt;=50K&quot; &quot; &lt;=50K&quot; &quot; &lt;=50K&quot; &quot; &lt;=50K&quot; ...</code></pre>
+<pre class="r"><code>summary(adult_data)</code></pre>
+<pre><code>##       age         workclass             fnlwgt         education        
+##  Min.   :17.00   Length:32561       Min.   :  12285   Length:32561      
+##  1st Qu.:28.00   Class :character   1st Qu.: 117827   Class :character  
+##  Median :37.00   Mode  :character   Median : 178356   Mode  :character  
+##  Mean   :38.58                      Mean   : 189778                     
+##  3rd Qu.:48.00                      3rd Qu.: 237051                     
+##  Max.   :90.00                      Max.   :1484705                     
+##  education_num   marital_status      occupation        relationship      
+##  Min.   : 1.00   Length:32561       Length:32561       Length:32561      
+##  1st Qu.: 9.00   Class :character   Class :character   Class :character  
+##  Median :10.00   Mode  :character   Mode  :character   Mode  :character  
+##  Mean   :10.08                                                           
+##  3rd Qu.:12.00                                                           
+##  Max.   :16.00                                                           
+##      race               sex             capital_gain    capital_loss   
+##  Length:32561       Length:32561       Min.   :    0   Min.   :   0.0  
+##  Class :character   Class :character   1st Qu.:    0   1st Qu.:   0.0  
+##  Mode  :character   Mode  :character   Median :    0   Median :   0.0  
+##                                        Mean   : 1078   Mean   :  87.3  
+##                                        3rd Qu.:    0   3rd Qu.:   0.0  
+##                                        Max.   :99999   Max.   :4356.0  
+##  hours_per_week  native_country        income         
+##  Min.   : 1.00   Length:32561       Length:32561      
+##  1st Qu.:40.00   Class :character   Class :character  
+##  Median :40.00   Mode  :character   Mode  :character  
+##  Mean   :40.44                                        
+##  3rd Qu.:45.00                                        
+##  Max.   :99.00</code></pre>
+</div>
+</div>
+</div>
 
 
 
