@@ -8,6 +8,8 @@ output: html_document
 ```{r}
 ## Essential modules to import
 library(dplyr)
+library(caret)
+library(leaps)
 ```
 
 ### For this problem we are going to use UCI’s student performance dataset. The dataset is a recording of student grades in math and language and includes attributes related to student demographics and school related features. Click on the above link, then go to “Data Folder” and download and unzip “student.zip”. You will be using student-mat.csv file. The goal is to create a regression model to forecast student final grade in math “G3” based on the other attributes.
@@ -80,54 +82,113 @@ Since we don't have factor variables hence let us make all the character variabl
 
 ```{r}
 # Let us select each character variable and make it a factor variable
+student_mat_data[["school"]] <- factor(student_mat_data[["school"]], levels = c("GP","MS"))
 
+student_mat_data[["sex"]] <- factor(student_mat_data[["sex"]], levels = c("F","M"))
+
+student_mat_data[["address"]] <- factor(student_mat_data[["address"]], levels = c("U","R"))
+
+student_mat_data[["famsize"]] <- factor(student_mat_data[["famsize"]], 
+                                        levels = c("GT3","LE3"))
+
+student_mat_data[["Pstatus"]] <- factor(student_mat_data[["Pstatus"]], levels = c("T","A"))
+
+student_mat_data[["Mjob"]] <- factor(student_mat_data[["Mjob"]], 
+                                     levels = c("at_home","health","other",
+                                                "services","teacher"))
+
+student_mat_data[["Fjob"]] <- factor(student_mat_data[["Fjob"]], 
+                                     levels = c("teacher","other","services",
+                                                "health" ,"at_home"))
+
+student_mat_data[["reason"]] <- factor(student_mat_data[["reason"]], 
+                                     levels = c("course","other","home","reputation"))
+
+student_mat_data[["guardian"]] <- factor(student_mat_data[["guardian"]],
+                                         levels = c( "mother","father","other"))
+
+## Yes / no variables
+
+yes_no_variables <- c("schoolsup", "famsup", "paid", 
+                      "activities", "nursery", "higher", 
+                      "internet", "romantic")
+for(col_val in yes_no_variables) {
+  student_mat_data[[col_val]] <- factor(student_mat_data[[col_val]], 
+                                        levels = c( "no", "yes"))
+}
 
 
 ```
 
+Now let us check all the variables datatype.
+
+```{r}
+# Code resued from my Assignemnetn 2 solution
+numeric_cols <- colnames(student_mat_data)[sapply(student_mat_data, is.numeric)]
+factor_cols <- colnames(student_mat_data)[sapply(student_mat_data, is.factor)]
+character_cols <- colnames(student_mat_data)[sapply(student_mat_data, is.character)]
+
+# Checking the column names
+cat("Numeric columns: \n------\n", paste(numeric_cols, collapse = ", "), "\n")
+cat("Factor columns: \n------\n", paste(factor_cols, collapse = ", "), "\n")
+cat("Character columns: \n------\n", paste(character_cols, collapse = ", "), "\n")
+```
 
 ```{r}
 ## Reused My Code from the Assignment 1 - automation
 ## and made it into a function
 
-# Nuerical vs Categ(2 types) - Two test 
+# Nuerical vs Numerical - Correlation Test 
 diagnose_association_numerical <- function(df, 
                                            numer_vars, 
                                            target_var, 
                                            signif_val = 0.05) {
   numer_p_value_dataframe <- data.frame()
-  for(v in numer_vars){
+  
+  for(v in numer_vars[(!numer_vars %in% c(target_var))]){
     
     print(paste("*************",v,"*************",sep= ""))
-    plot(df[,v]~df[, target_var], 
-       col="green", 
-       main = paste("Box Plot - ",target_var," vs. ",v, sep = ""),
-       xlab = target_var,
-       ylab = v)
+    plot(x = df[, target_var], 
+         y = df[,v], 
+         main = paste("Scatter Plot - ",target_var," vs. ",v, sep = ""),
+         xlab = target_var, 
+         ylab = v)
     
-    # t.test - to test whether a categorical variable with two levels is
-    # independent of a continuous numerical variable
-    numer_Test_details = t.test(df[,v] ~ df[,target_var], 
-                                alternative = "two.sided")
+    print(paste("Simple correlation check between the variables : ", cor(df[, target_var], df[, v])))
+    
+    # Kendall Correlation Test - to test association between 2 numerical variables
+    # I am usigng the kendall rank correlation because 
+    # I am comparing the G3 (score) varaible which can be ranked.
+    # Also, Unlike Pearson correlation, Rank correlation can be
+    # applied to both continuous (interval) and ordinal variables.
+    hypotheis_test_employed <- "kendall"
+    numer_Test_details <- cor.test(df[,v], df[,target_var], method = hypotheis_test_employed)
+    
     print(numer_Test_details)
+    
     numer_p_value_dataframe <- rbind(
       numer_p_value_dataframe,
-      data.frame(feature1 = target_var,
-                 feature2 = v,
-                 p.value = numer_Test_details["p.value"]))
+      data.frame(
+        feature1 = target_var,
+        feature2 = v,
+        p.value = numer_Test_details["p.value"],
+        test_employed = hypotheis_test_employed
+        )
+      )
     }
   
   numer_p_value_dataframe$signif <- signif_val
   numer_p_value_dataframe$result <- (
     ifelse(
-      numer_p_value_dataframe$p.value < numer_p_value_dataframe$signif,
-      "pass", "fail" ))
+      numer_p_value_dataframe$p.value < numer_p_value_dataframe$signif, "pass", "fail" 
+      )
+    )
   
   return(numer_p_value_dataframe)
   
 }
 
-# Categorical vs Categoricl - ChiSQ Test
+# Numerical vs Categoricl - two.test / anova test
 diagnose_association_factor <- function(df,
                                         factor_vars, 
                                         target_var,
@@ -136,18 +197,39 @@ diagnose_association_factor <- function(df,
   factor_p_value_dataframe <- data.frame()
   for(v in factor_vars[(!factor_vars %in% c(target_var))]){
     print(paste("--------------------",v,"--------------------"))
-    ctable <- table(df[, v], df[, target_var])
-    mosaicplot(ctable,
-               ylab = target_var,
-               xlab = v,
-               main = paste("Mosaic graph of",target_var,"vs",v,sep = " "))
-    print(chisq.test(ctable))
-    factor_Test_details = chisq.test(ctable)
+    
+    # CHATGPT : how to print unique values using cat() in R in one line?
+    cat("Unique values:", paste(unique(df[,v]), collapse = ", "))
+    
+    plot(df[, target_var]~df[,v], 
+       col="green", 
+       main = paste("Box Plot - ",target_var," vs. ",v, sep = ""),
+       xlab = target_var,
+       ylab = v)
+    
+    if(length(unique(df[,v])) > 2) {
+      # Since we want to study the relationship between 
+      # one independent categorical variable and a numeric response
+      hypotheis_test_employed <- "anova"
+      factor_Test_details = oneway.test(df[,target_var] ~ df[,v], 
+                                        data = df)
+    } else {
+      # t.test - to test whether a categorical variable with two levels is
+      # independent of a continuous numerical variable
+      hypotheis_test_employed <- "two.test"
+      factor_Test_details = t.test(df[,target_var] ~ df[,v],
+                                   alternative = "two.sided")
+    }
+    
     factor_p_value_dataframe <- rbind(
       factor_p_value_dataframe,
-      data.frame(feature1 = target_var,
-                 feature2 = v,
-                 p.value = factor_Test_details["p.value"]))
+      data.frame(
+        feature1 = target_var,
+        feature2 = v,
+        p.value = factor_Test_details["p.value"],
+        test_employed = hypotheis_test_employed
+        )
+      )
     }
   
   factor_p_value_dataframe$signif <- signif_val
@@ -158,15 +240,20 @@ diagnose_association_factor <- function(df,
   
   return(factor_p_value_dataframe)
 }
+```
+
+```{r}
+# Checking the association of variables with target variable
+target_DV <- "G3"
 
 
+assoc_num_df <- diagnose_association_numerical(df = student_mat_data,
+                                               numer_vars = numeric_cols,
+                                               target_var = target_DV)
 
-assoc_num_df <- diagnose_association_numerical(df = bank_data, 
-                                         numer_vars = numeric_cols,
-                                         target_var = "y")
-assoc_fac_df <- diagnose_association_factor(df = bank_data, 
+assoc_fac_df <- diagnose_association_factor(df = student_mat_data, 
                                             factor_vars = factor_cols,
-                                            target_var = "y")
+                                            target_var = target_DV)
 
 
 qualified_features_data <- assoc_num_df %>% rbind.data.frame(assoc_fac_df)
@@ -176,3 +263,123 @@ qualified_features_data
 
 
 ###### c. Draw a histogram of the target variable “G3” and interpret it.
+
+Let us draw the histogram understand the distribution.
+
+```{r}
+# Historgram of Target DV - G3
+hist(student_mat_data$G3, main = "Histogram of G3", xlab = "Final Grade (G3)", ylab = "Frequency")
+```
+The above histogram shows us the G3 is normally distributed and 0 - 5 bin largeely concectrated towards 0 side.
+
+#### 13. (0.5 pt) Split the data into train and test. Use 80% of samples for training and 20% of samples for testing.
+
+
+```{r}
+# CHATGPT: how to split dataframe into train and test
+
+# Although the lecutre notes show splitting datasets iusing the sample function
+# I still wanted to check with CHAT GPT for some other functions and ways
+# I found out about caTools and other ways, train and test split used CHat CPT and I just included necessary variables
+
+# Setting the seed for reproducibility
+set.seed(123)
+split_perc <- 0.8
+indices <- sample(nrow(student_mat_data))
+train_size <- round(split_perc * nrow(student_mat_data))
+
+# Finding the train indices
+train_indices <- indices[1:train_size]
+
+# Create train and test dataframes
+student_mat_data_train <- student_mat_data[train_indices, ]
+student_mat_data_test <- student_mat_data[-train_indices, ]
+```
+
+
+#### 14. set the random seed: set.seed(123)
+
+That is already set, yet doing it one more time.
+
+```{r}
+set.seed(123)
+```
+
+#### 15. (2 pt) Use caret package to run 10 fold cross validation using linear regression method on the train data to predict the “G3” variable . Print the resulting model to see the cross validation RMSE. In addition, take a summary of the model and interpret the coefficients. Which coefficients are statistically different from zero? What does this mean?
+
+I am gonna reuse the code from the lecture notes.
+
+```{r}
+# cv Technique on train data
+train.control = trainControl(method = "cv", number = 10)
+model = train(G3~., data = student_mat_data_train, method = "lm", trControl = train.control)
+```
+
+
+Let us print the model and understand the model performance and coefficients.
+
+```{r}
+# Checking the model
+print(model)
+
+summary(model)
+```
+
+#### Set the random seed again. We need to do this before each training to ensure we get the same folds in cross validation. Set.seed(123) so we can compare the models using their cross validation RMSE.(2 pts) Use caret and leap packages to run a 10 fold cross validation using step wise linear regression method with backward selection on the train data. The train method by default uses maximum of 4 predictors and reports the best models with 1..4 predictors. We need to change this parameter to consider all predictors. So inside your train function, add the following parameter tuneGrid = data.frame(nvmax = 1:n), where n is the number of variables you use to predict “G3”.
+
+I am gonna reuse the codes from the lecture.
+
+```{r}
+# Setting seed, althought I have set it in the previous R code chunks
+set.seed(123)
+
+# Stepwise regression
+# Backwards eliminiation
+
+number_of_predictors <- ncol(student_mat_data_train) - 1
+
+train.control <- trainControl(method = "cv", number = 10)
+
+step.model <- train(G3 ~., 
+                    data = student_mat_data_train,
+                    method = "leapBackward",
+                    trControl = train.control,
+                    tuneGrid = data.frame(nvmax = 1:number_of_predictors))
+
+
+
+
+```
+
+Let us check the model and its summary.
+
+```{r}
+# Checking the model
+# print(step.model)
+
+# summary(step.model)
+
+# summary(step.model$finalModel)
+
+
+# Coefficient names and values
+coef_names <- names(coef(step.model$finalModel, id = 1))
+coef_values <- coef(step.model$finalModel, id = 1)
+
+# Performance metrics
+rmse <- step.model$results$RMSE
+
+# Create dataframe
+model_summary <- data.frame(
+  Coefficient_Names = coef_names,
+  Coefficient_Values = coef_values,
+  RMSE = rmse
+)
+
+# Print the dataframe
+print(model_summary)
+
+
+```
+
+

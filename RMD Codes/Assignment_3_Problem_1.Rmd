@@ -87,4 +87,4 @@ adult_data_test <- adult_data[-train_sample_index, ]
 ```
 
  
- 
+##### 4. (3pt) Read the section on “Handling Missing Data” in chapter 13 of the textbook Machine Learning with R. Find which columns/variables in the train and test set have missing values. Then decide about how you want to impute the missing values in these columns. Explain why you chose this imputation approach.
