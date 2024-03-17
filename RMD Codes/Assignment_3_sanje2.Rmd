@@ -67,16 +67,16 @@ workclass     :  Caetgorical variable - Nominal
 fnlwgt        :  Numerical variable (although it has integers, it can be considered as continous)
 education     :  Categorical variable - Nominal variable - But can be considered ordnial. But for this problem I have considered it to be the nominal variable.
 education_num :  Numerical - integer variable - discrete in nature.
-marital_status: chr  Categoriacl variable - nominal variable
-occupation    : chr  Categorical variable - nominal varaiable
-relationship  : chr  Categoriacl variable - nominal variable
-race          : chr  Categoriacl variable - nominal variable
-sex           : chr  Categoriacl variable - nominal variable
-capital_gain  : int  Numerical variable - discrete in nature
-capital_loss  : int  numerical variable and discrete integree variable
-hours_per_week: int  numerical variable and discrete integree variable
-native_country: chr  Categorical variable - nominal varaiable
-income        : chr  Categorical variable - nominal varaiable
+marital_status:  Categoriacl variable - nominal variable
+occupation    :  Categorical variable - nominal varaiable
+relationship  :  Categoriacl variable - nominal variable
+race          :  Categoriacl variable - nominal variable
+sex           :  Categoriacl variable - nominal variable
+capital_gain  :  Numerical variable - discrete in nature
+capital_loss  :  numerical variable and discrete integree variable
+hours_per_week:  numerical variable and discrete integree variable
+native_country:  Categorical variable - nominal varaiable
+income        :  Categorical variable - nominal varaiable
 
 ##### 2. (0.5 pt) There are some missing values in this dataset represented as “ ?” (Note: there is a space before?). Make sure that all “ ?” are converted to NAs. You can do so by setting “na.strings” parameters in “read.csv” to “ ?”.
 
@@ -146,7 +146,7 @@ Before we proceed with imputing _native_contry_ feature, let us understand the n
 
 ```{r}
 # Let us print the na_Recrods_train dataset
-# I checked teh entire dataset, but just showing the 
+# I checked teh entire dataset, but just showing the head 
 print(head(na_records_train, n = 7L))
 ```
 
@@ -156,7 +156,7 @@ For every na record in working class column the occupation column has na. Whenev
 
 _*understood this above quote from the textbook*_
 
-Also, I am gonna update the working class unknown for all the unknown values. I think, this missing information is not random and contains valuable information. If I just the impute the category with the mode of the category, then this approach might lead to loss of predictive power and potentially biased model estimates.
+Also, I am gonna update the working class unknown for all the unknown values. I think, this missing information is not random and contains valuable information. Even though I just the impute the category with the mode of the category, I do't think it will cause any bias in modelling. However, I am gonna update them to 'Unknown', because I believe the values have bee purposefully been missed (because they seem to have a patterm).
 
 ```{r}
 # Let us set up tehe variables to update the dataframe
@@ -178,10 +178,12 @@ adult_data_test$native_country[is.na(adult_data_test$native_country)] <- impute_
 
 ```
 
-##### 5. (3pt) The variable native-country is sparse, meaning it has too many levels, where some levels occur infrequently. Most machine learning algorithms do not work well with spares data. One-hot-encoding or dummy coding of these variables will increase feature dimensions significantly and typically some preprocessing is required to reduce the number of levels. One approach is to group together the levels which occur infrequently. For instance, one could combine together countries with less than 0.1% occurrence in the data to an “other” category. Another possibility is to use domain knowledge; for instance, combine countries based on their geographic location ( “Middle East”, “East-Europe”, “West-Europe”, etc. In a subsequent assignment we will use “feature hashing” which is yet another way to deal with sparse data but for now, please read the section on Making use of sparse data (remapping sparse categorical data) in chapter 13 of the textbook Machine learning with R. Then combine some of the infrequent levels of the native-country. You can decide whether you want to combine the levels based on frequency or domain knowledge. Either one is fine for this assignment but preference will be with a choice that would increase the cross validation performance of the ML models you will train subsequently.
+##### 5. (3pt) The variable native-country is sparse, meaning it has too many levels, where some levels occur infrequently. Most machine learning algorithms do not work well with spares data. One-hot-encoding or dummy coding of these variables will increase feature dimensions significantly and typically some preprocessing is required to reduce the number of levels. One approach is to group together the levels which occur infrequently. For instance, one could combine together countries with less than 0.1% occurrence in the data to an “other” category. Another possibility is to use domain knowledge; for instance, combine countries based on their geographic location ( “Middle East”, “East-Europe”, “West-Europe”, etc. In a subsequent assignment we will use “feature hashing” which is yet another way to deal with sparse data but for now, please read the section on Making use of sparse data (remapping sparse categorical data) in chapter 13 of the textbook Machine learning with R. Then combine some of the infrequent levels of the native-country. You can decide whether you want to combine the levels based on frequency or domain knowledge. 
+
+> Either one is fine for this assignment but preference will be with a choice that would increase the cross validation performance of the ML models you will train subsequently.
 
 
-Let us check all the countries in the dataset.
+Let us check all the countries in the dataset. I am going to categoires countries into different regions.
 
 ```{r}
 # creating regions list
@@ -225,6 +227,7 @@ adult_data_test$native_country <- sapply(adult_data_test$native_country, get_reg
 
 ## --test--
 print(unique(adult_data_train$native_country))
+print(unique(adult_data_test$native_country))
 ```
 
 ##### 6. (3pt) Use appropriate plots and statistic tests to find which variables in the dataset are associated with “income”. Remove the variable(s) that are not associated with income.
@@ -361,11 +364,13 @@ qualified_features_data <- assoc_num_df %>% rbind.data.frame(assoc_fac_df)
 
 qualified_features_data
 ```
+"fnlwgt" - this particular feature doesn't have association with our target variable. And I shall rmove this variable from the features list / dataframe.
+
 ```{r}
 # Removing the variable from the 
 unqualified_feature <- qualified_features_data[(qualified_features_data$result == "fail"), "feature2"]
 
-# Discarding that feature
+# Discarding that feature from the datasets
 adult_data_train <- adult_data_train %>% select(-one_of(unqualified_feature))
 adult_data_test <- adult_data_test %>% select(-one_of(unqualified_feature))
 ```
@@ -373,9 +378,11 @@ adult_data_test <- adult_data_test %>% select(-one_of(unqualified_feature))
 
 ##### 7. (2pt) Train a logistic regression model on the train data (preprocessed and transformed using above steps) using the glm package and use it to predict “income” for the test data. Note: As explained in the lectures, “predict” method will return predicted probabilities. To convert them to labels, you need to use some threshold ( typically set as 50%) and if the predicted probability is greater than 50% you predict income>50K; otherwise predict income<=50K ( please review the example in lecture 7.2).
 
+I am reusing the codes from the lecture notes.
 
 ```{r}
 # Training the model
+# the equatin is income varable is function all other variables
 log_reg_model <- glm(income~., data = adult_data_train, family = "binomial")
 
 summary(log_reg_model)
@@ -386,6 +393,7 @@ summary(log_reg_model)
 log_reg_prdiction <- predict(object = log_reg_model, adult_data_test, type = "response")
 head(log_reg_prdiction)
 ```
+
 ```{r}
 # Let us check the prodcitions
 log_reg_predicted_label = ifelse(log_reg_prdiction > 0.5, " >50K", " <=50K")
@@ -416,6 +424,7 @@ performance_evaluation_fn <- function(confusion_matrix) {
   return(list("Error_Value" = Error_Value, "Precision_Value" = Precision_Value, "Recall_Value" = Recall_Value))
 }
 
+# Displaying performance
 log_reg_performance <- performance_evaluation_fn(confusion_matrix = CONFUSION_MATRIX_1)
 print(log_reg_performance)
 
@@ -439,7 +448,7 @@ print(log_reg_performance)
 
 * Re-train the logistic regression model on the balanced training data and evaluate it on the test data. Compare the total error, precision, and recall for the <=50K class and >=50K classes with the previous model. Which model does better at predicting each class?
 
-I am going to use all the codes in the same R code chunk.
+I am going to use all the codes in the same R code chunk. Yes, I am going to downsample.
 
 ```{r}
 # Splitting the training data set
@@ -477,6 +486,7 @@ error <- (CONFUSION_MATRIX_2[1,2]+CONFUSION_MATRIX_2[2,1]) / sum(CONFUSION_MATRI
 log_reg_performance_2 <- performance_evaluation_fn(confusion_matrix = CONFUSION_MATRIX_2)
 print(log_reg_performance_2)
 ```
+Error has increased when we downsampled. Comparatively, Error in the downsampled model is higher thatn the eroor in the actual train data. Precision answers the question : Of all the instances predicted as positive, how many were actually positive? So we see that precion valu increased in the downsampled modeled. That might be bacuse of downsampled case becasue the we have equal reprefsenation of 2 classes in the DV variable. On the other hand, Recall measures the ability of the model to find all the positive instances. When compared ot the previous model recall has decreased.
 
 ##### 10. (3pt) Repeat steps 7-9 above but this time, use a C5.0 decision tree model to predict “income” instead of the logistic regression model (use trials=30 for boosting multiple decision trees (see an example in slide 44, module 6) . Compare the logistic regression model with the boosted C5.0 model.
 
@@ -511,12 +521,460 @@ decision_tree_boost_performance_2 <- performance_evaluation_fn(confusion_matrix 
 
 # Final values
 print(decision_tree_boost_performance)
+print("--------Downsampled-----")
 print(decision_tree_boost_performance_2)
 
 
 ```
+Below is you see the values form the original logistiv regression.
+
+$Error_Value
+[1] 0.1501843
+
+$Precision_Value
+[1] 0.605686
+
+$Recall_Value
+[1] 0.7424242
+
+When we compare the decisoin tree and logistic regression, we can conclude that the decision tree has given us better results. Ther error is lesseer the lo. reg model and preciosn is better the origianl log. reg. model.
+
+
+# Problem2—Predicting Student Performance
 
 ```{r}
-rm(list = setdiff(ls(), c("variable1", "variable2")))
+## Essential modules to import
+library(dplyr)
+library(caret)
+library(leaps)
 ```
 
+### For this problem we are going to use UCI’s student performance dataset. The dataset is a recording of student grades in math and language and includes attributes related to student demographics and school related features. Click on the above link, then go to “Data Folder” and download and unzip “student.zip”. You will be using student-mat.csv file. The goal is to create a regression model to forecast student final grade in math “G3” based on the other attributes.
+
+-----
+
+##### 11. (0.5pt) Read the dataset into a dataframe. Ensure that you are using a correct delimiter to read the data correctly and set the “sep” option in read.csv accordingly.
+
+```{r}
+# Input data paths
+student_mat_data_path <- "D:/UIS/Studies/Semester4/CSC532/Assignments/Assignment3/regression_project/input_datasets/student+performance/student/student-mat.csv"
+```
+
+
+```{r}
+# Reading data
+student_mat_data <- read.csv(file = student_mat_data_path, 
+                             header = TRUE,
+                             sep = ";")
+```
+
+##### 12. (2pt) Explore the dataset. More specifically, answer the following questions:
+
+###### a. Is there any missing values in the dataset?
+
+```{r}
+# Let us check if there are any null / missing values
+cat(paste(
+  "Prelimiary Check for the existence of null values : ", 
+  sum(is.na(student_mat_data)), 
+  sep = ""))
+
+# let us check the null values values in different formats
+student_mat_data_NA_Check <- student_mat_data
+student_mat_data_NA_Check[student_mat_data_NA_Check %in% c("NA", "N/A", "NULL", "", "."," ","?")] <- NA
+print(sum(is.na(student_mat_data_NA_Check)))
+```
+So basically there are no missign values, hence we are gonna proceed further with the assignment questions.
+
+When checked this link: https://archive.ics.uci.edu/dataset/320/student+performance
+I was able to make sure that my investigation is right because the website says no maiisgin values.
+
+###### b. Which variables are associated with the target variable G3? To answer this question, use appropriate plots and test statistics based on variable types. You can do this one by one for all variables or write a loop that applies appropriate statistic tests based on variable types. Either approach is fine.
+
+To understand that we would first have to undertand the strucutre of the dataframe and get summary of the dataframe.
+
+```{r}
+# Structure fo the dataframe
+str(student_mat_data)
+
+# Summary
+summary(student_mat_data)
+```
+
+There are 33 features. Let us check the columns and data types.
+
+```{r}
+# Code resued from my Assignemnetn 2 solution
+numeric_cols <- colnames(student_mat_data)[sapply(student_mat_data, is.numeric)]
+factor_cols <- colnames(student_mat_data)[sapply(student_mat_data, is.factor)]
+character_cols <- colnames(student_mat_data)[sapply(student_mat_data, is.character)]
+
+# Checking the column names
+cat("Numeric columns: \n------\n", paste(numeric_cols, collapse = ", "), "\n")
+cat("Factor columns: \n------\n", paste(factor_cols, collapse = ", "), "\n")
+cat("Character columns: \n------\n", paste(character_cols, collapse = ", "), "\n")
+```
+
+Since we don't have factor variables hence let us make all the character variables to factor nominal variables.
+
+```{r}
+# # Let us select each character variable and make it a factor variable
+# Making all the cahracter variables to factors, I don't want them to have levels.
+for(cc in character_cols) {
+  student_mat_data[, cc] <- factor(student_mat_data[, cc])
+}
+```
+
+Now let us check all the variables datatype.
+
+```{r}
+# Code resued from my Assignemnetn 2 solution
+numeric_cols <- colnames(student_mat_data)[sapply(student_mat_data, is.numeric)]
+factor_cols <- colnames(student_mat_data)[sapply(student_mat_data, is.factor)]
+character_cols <- colnames(student_mat_data)[sapply(student_mat_data, is.character)]
+
+# Checking the column names
+cat("Numeric columns: \n------\n", paste(numeric_cols, collapse = ", "), "\n")
+cat("Factor columns: \n------\n", paste(factor_cols, collapse = ", "), "\n")
+cat("Character columns: \n------\n", paste(character_cols, collapse = ", "), "\n")
+```
+
+```{r}
+## Reused My Code from the Assignment 1 - automation
+## and made it into a function
+
+# Nuerical vs Numerical - Correlation Test 
+diagnose_association_numerical <- function(df, 
+                                           numer_vars, 
+                                           target_var, 
+                                           signif_val = 0.05) {
+  numer_p_value_dataframe <- data.frame()
+  
+  for(v in numer_vars[(!numer_vars %in% c(target_var))]){
+    
+    print(paste("*************",v,"*************",sep= ""))
+    plot(x = df[, target_var], 
+         y = df[,v], 
+         main = paste("Scatter Plot - ",target_var," vs. ",v, sep = ""),
+         xlab = target_var, 
+         ylab = v)
+    
+    print(paste("Simple correlation check between the variables : ", cor(df[, target_var], df[, v])))
+    
+    # Kendall Correlation Test - to test association between 2 numerical variables
+    # I am usigng the kendall rank correlation because 
+    # I am comparing the G3 (score) varaible which can be ranked.
+    # Also, Unlike Pearson correlation, Rank correlation can be
+    # applied to both continuous (interval) and ordinal variables.
+    hypotheis_test_employed <- "kendall"
+    numer_Test_details <- cor.test(df[,v], df[,target_var], method = hypotheis_test_employed)
+    
+    print(numer_Test_details)
+    
+    numer_p_value_dataframe <- rbind(
+      numer_p_value_dataframe,
+      data.frame(
+        feature1 = target_var,
+        feature2 = v,
+        p.value = numer_Test_details["p.value"],
+        test_employed = hypotheis_test_employed
+        )
+      )
+    }
+  
+  numer_p_value_dataframe$signif <- signif_val
+  numer_p_value_dataframe$result <- (
+    ifelse(
+      numer_p_value_dataframe$p.value < numer_p_value_dataframe$signif, "pass", "fail" 
+      )
+    )
+  
+  return(numer_p_value_dataframe)
+  
+}
+
+# Numerical vs Categoricl - two.test / anova test
+diagnose_association_factor <- function(df,
+                                        factor_vars, 
+                                        target_var,
+                                        signif_val = 0.05) {
+  
+  factor_p_value_dataframe <- data.frame()
+  for(v in factor_vars[(!factor_vars %in% c(target_var))]){
+    print(paste("--------------------",v,"--------------------"))
+    
+    # CHATGPT : how to print unique values using cat() in R in one line?
+    cat("Unique values:", paste(unique(df[,v]), collapse = ", "))
+    
+    plot(df[, target_var]~df[,v], 
+       col="green", 
+       main = paste("Box Plot - ",target_var," vs. ",v, sep = ""),
+       xlab = target_var,
+       ylab = v)
+    
+    if(length(unique(df[,v])) > 2) {
+      # Since we want to study the relationship between 
+      # one independent categorical variable and a numeric response
+      hypotheis_test_employed <- "anova"
+      factor_Test_details = oneway.test(df[,target_var] ~ df[,v], 
+                                        data = df)
+    } else {
+      # t.test - to test whether a categorical variable with two levels is
+      # independent of a continuous numerical variable
+      hypotheis_test_employed <- "two.test"
+      factor_Test_details = t.test(df[,target_var] ~ df[,v],
+                                   alternative = "two.sided")
+    }
+    
+    factor_p_value_dataframe <- rbind(
+      factor_p_value_dataframe,
+      data.frame(
+        feature1 = target_var,
+        feature2 = v,
+        p.value = factor_Test_details["p.value"],
+        test_employed = hypotheis_test_employed
+        )
+      )
+    }
+  
+  factor_p_value_dataframe$signif <- signif_val
+  factor_p_value_dataframe$result <- (
+    ifelse(
+      factor_p_value_dataframe$p.value < factor_p_value_dataframe$signif,
+      "pass", "fail" ))
+  
+  return(factor_p_value_dataframe)
+}
+```
+
+```{r}
+# Checking the association of variables with target variable
+target_DV <- "G3"
+
+
+assoc_num_df <- diagnose_association_numerical(df = student_mat_data,
+                                               numer_vars = numeric_cols,
+                                               target_var = target_DV)
+
+assoc_fac_df <- diagnose_association_factor(df = student_mat_data, 
+                                            factor_vars = factor_cols,
+                                            target_var = target_DV)
+
+
+qualified_features_data <- assoc_num_df %>% rbind.data.frame(assoc_fac_df)
+
+# CHATGPT: how to sort a dataframe in R?
+qualified_features_data[order(qualified_features_data$result, decreasing = FALSE), ]
+
+```
+The features seen in the above dataframe tthat has failed in the association test have no association. I thought of discarding them, but will let the models decide.
+
+###### c. Draw a histogram of the target variable “G3” and interpret it.
+
+Let us draw the histogram understand the distribution.
+
+```{r}
+# Historgram of Target DV - G3
+hist(student_mat_data$G3, main = "Histogram of G3", xlab = "Final Grade G3", ylab = "Frequency")
+print(paste("Mean of G3: ",mean(student_mat_data$G3)))
+print(paste("MeDdian of G3: ",median(student_mat_data$G3)))
+
+```
+The above histogram shows us the G3 is normally distributed and 0 - 5 bin largeely concectrated towards 0. It is almost a perfect symmteyical normal districbution.
+
+#### 13. (0.5 pt) Split the data into train and test. Use 80% of samples for training and 20% of samples for testing.
+
+
+```{r}
+# CHATGPT: how to split dataframe into train and test
+
+# Although the lecutre notes show splitting datasets iusing the sample function
+# I still wanted to check with CHAT GPT for some other functions and ways
+# I found out about caTools and other ways, train and test split used CHat CPT and I just included necessary variables
+
+# Setting the seed for reproducibility
+set.seed(123)
+split_perc <- 0.8
+indices <- sample(nrow(student_mat_data))
+train_size <- round(split_perc * nrow(student_mat_data))
+
+# Finding the train indices
+train_indices <- indices[1:train_size]
+
+# Create train and test dataframes
+student_mat_data_train <- student_mat_data[train_indices, ]
+student_mat_data_test <- student_mat_data[-train_indices, ]
+```
+
+
+#### 14. set the random seed: set.seed(123)
+
+That is already set, yet doing it one more time.
+
+```{r}
+set.seed(123)
+```
+
+#### 15. (2 pt) Use caret package to run 10 fold cross validation using linear regression method on the train data to predict the “G3” variable . Print the resulting model to see the cross validation RMSE. In addition, take a summary of the model and interpret the coefficients. Which coefficients are statistically different from zero? What does this mean?
+
+I am gonna reuse the code from the lecture notes.
+
+```{r}
+# cv Technique on train data
+train.control = trainControl(method = "cv", number = 10)
+model = train(G3~., data = student_mat_data_train, method = "lm", trControl = train.control)
+```
+
+
+Let us print the model and understand the model performance and coefficients.
+
+```{r}
+# Checking the model
+print(model)
+
+summary(model)
+```
+Ideally residual meadn should be 0, ours is close to 0; t value - how true coeffs are significantly different from 0. P value - is the tru coeff significantly diffrent from 0. Statistically signficant features - G2, G1, absences, famrel, activitieiesyes, age are very much significant feature statistically, escpecially G2; When we see the R SQ values, we can undesrtatnd the regression line very well fits the data points.
+
+#### Set the random seed again. We need to do this before each training to ensure we get the same folds in cross validation. Set.seed(123) so we can compare the models using their cross validation RMSE.(2 pts) Use caret and leap packages to run a 10 fold cross validation using step wise linear regression method with backward selection on the train data. The train method by default uses maximum of 4 predictors and reports the best models with 1..4 predictors. We need to change this parameter to consider all predictors. So inside your train function, add the following parameter tuneGrid = data.frame(nvmax = 1:n), where n is the number of variables you use to predict “G3”.
+
+I am gonna reuse the codes from the lecture.
+
+```{r}
+# Setting seed, althought I have set it in the previous R code chunks
+set.seed(123)
+
+# Stepwise regression
+# Backwards eliminiation
+
+number_of_predictors <- ncol(student_mat_data_train) - 1
+
+train.control <- trainControl(method = "cv", number = 10)
+tune.grid <- data.frame(nvmax = c(1 : number_of_predictors))
+# tune.grid <- data.frame(nvmax = c(4 : number_of_predictors))
+wrapper_method = "leapBackward"
+
+step.model <- train(G3 ~., 
+                    data = student_mat_data_train,
+                    method = wrapper_method,
+                    tuneGrid = tune.grid,
+                    trControl = train.control
+                    )
+
+# Checking the model
+print(step.model)
+
+summary(step.model)
+
+summary(step.model$finalModel)
+
+
+# Coefficient names and values
+coef_names <- names(coef(step.model$finalModel, id = step.model$bestTune$nvmax[1]))
+coef_values <- coef(step.model$finalModel, id = step.model$bestTune$nvmax[1])
+
+# Performance metrics
+rmse <- step.model$results$RMSE
+
+# Create dataframe
+model_summary <- data.frame(
+  Coefficient_Names = coef_names,
+  Coefficient_Values = coef_values
+)
+
+# Print the dataframe
+print(model_summary)
+print(paste("Number of variables - best tune : ", step.model$bestTune$nvmax[1]))
+print(rmse)
+
+
+```
+Equation becomes :  G3 = -1.354208	+ 1.102498	* G2
+
+
+Let us check the model and its summary. From the summary we see that the backward selection has chosen only one variable. And the model performnace is given below.
+
+nvmax  RMSE      Rsquared   MAE     
+   1     1.730845  0.8599512  1.049833
+
+_TESTING LEAFFORWARD_
+
+just testing
+
+```{r}
+number_of_predictors2 <- ncol(student_mat_data_train) - 1
+
+train.control2 <- trainControl(method = "cv", number = 10)
+tune.grid2 <- data.frame(nvmax = c(2 : number_of_predictors))
+wrapper_method2 = "leapForward"
+
+step.model2 <- train(G3 ~., 
+                    data = student_mat_data_train,
+                    method = wrapper_method2,
+                    tuneGrid = tune.grid2,
+                    trControl = train.control2
+                    )
+
+print(step.model2)
+
+summary(step.model2)
+
+summary(step.model2$finalModel)
+
+# Coefficient names and values
+coef_names2 <- names(coef(step.model2$finalModel, id = step.model2$bestTune$nvmax[1]))
+coef_values2 <- coef(step.model2$finalModel, id = step.model2$bestTune$nvmax[1])
+
+# Performance metrics
+rmse2 <- step.model2$results$RMSE
+
+# Create dataframe
+model_summary2 <- data.frame(
+  Coefficient_Names = coef_names2,
+  Coefficient_Values = coef_values2
+  # RMSE = rmse2
+)
+
+# Print the dataframe
+print(model_summary2)
+print(paste("Number of variables - best tune : ", step.model2$bestTune$nvmax[1]))
+print(rmse)
+
+```
+
+
+##### 16. (2pt) Which model does better at predicting G3 based on the cross validation RMSE? Get the predictions of this model for the test data and report RMSE.
+
+
+Based on the RMSE, the final model of the leapBackwards model is better thatn the just 10 fold cross validation model.
+But let us predict ht etest data with both the tmodels.
+
+```{r}
+# custom function, because predict did not work
+fit_G3 <- function(G2) {
+  G3 <- -1.354208 + 1.102498 * G2
+  return(G3)
+}
+
+# CV - 10
+test_predictions <- predict(model, newdata = student_mat_data_test)
+
+# CV - 10 | Forward Propagation
+test_predictions_BE <- fit_G3(student_mat_data_test$G2)
+
+# CV - 10 | Forward Propagation
+test_predictions_FP <- predict(object = step.model2, newdata = (student_mat_data_test))
+
+# Calculate RMSE for the test predictions
+test_rmse <- sqrt(mean((student_mat_data_test$G3 - test_predictions)^2))
+test_rmse2 <- sqrt(mean((student_mat_data_test$G3 - test_predictions_FP)^2))
+test_rmse3 <- sqrt(mean((student_mat_data_test$G3 - test_predictions_BE)^2))
+
+# Print the RMSE
+print(paste("Normal Regression model = ",test_rmse));
+print(paste("Feature Selection process modeling FP = ",test_rmse2)) # forward propation
+print(paste("Feature Selection process modeling BE = ",test_rmse3)) # backward elimination
+
+```
+
+So feature selection model is the best and that is what I will chOose based on the RMSE value.
