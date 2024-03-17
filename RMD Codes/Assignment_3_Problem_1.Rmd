@@ -8,6 +8,7 @@ output: html_document
 ```{r}
 ## Essential modules to import
 library(dplyr)
+library(C50)
 ```
 
 
@@ -88,3 +89,420 @@ adult_data_test <- adult_data[-train_sample_index, ]
 
  
 ##### 4. (3pt) Read the section on “Handling Missing Data” in chapter 13 of the textbook Machine Learning with R. Find which columns/variables in the train and test set have missing values. Then decide about how you want to impute the missing values in these columns. Explain why you chose this imputation approach.
+
+
+```{r}
+# CHecking any missing values
+print(anyNA(adult_data_train))
+
+na_cols_train <- (colnames(adult_data_train)[colSums(is.na(adult_data_train)) > 0])
+na_cols_test <- (colnames(adult_data_test)[colSums(is.na(adult_data_test)) > 0])
+
+# CHATGPT: how to extract records from a dataframe that has atleast one NULL / NA value in R?
+# Extracting NA records to understand any pattern
+na_records_train <- adult_data_train[!complete.cases(adult_data_train), ]
+na_records_test <- adult_data_test[!complete.cases(adult_data_test), ]
+
+# I am just gonna check the train data - na records
+print("Columns that have  missing values : train data : ")
+cat(paste(na_cols_train, collapse = ", "))
+
+print("Columns that have  missing values : test data : ")
+cat(paste(na_cols_test, collapse = ", "))
+
+# Based on the lLEecture Notes on Data Leakage, I am not going to input the missing values of the test dataet with the values ascertained based on the train dataset
+
+
+```
+Now let us check eaf of theese columns and understand any patter in the dataset.
+
+```{r}
+for(i in na_cols_train){
+  print(paste("*********",i,"*********", sep = " "))
+  # print(unique(adult_data_train[,i]))
+  # print(sort(table(adult_data_train[,i]), decreasing = T))
+  print(paste("Perc Missing : ", (sum(is.na(adult_data_train[,i])))/nrow(adult_data_train)))
+}
+
+```
+
+From the above analysis we can consider of imputing the _native_country_ feature with the mode. This is because we have around 2% missing values and as a ML practicioner I am not gonna seriously worry about the relevance instead going to make sure the modeling is done perfectly.
+
+Before we proceed with imputing _native_contry_ feature, let us understand the na_records dataframe. Bascially unsderstading the MVP (missing value pattern).
+
+```{r}
+# Let us print the na_Recrods_train dataset
+# I checked teh entire dataset, but just showing the 
+print(head(na_records_train, n = 7L))
+```
+
+For every na record in working class column the occupation column has na. Whenever ouccupation column is na, the working class is either na or never worked. This pattern give me an idea to update the occupation class with the value "unknown". 
+
+> _*As a machine learning practitioner I am less concerned with the internal relationships among a dataset’s features, and more focused on the features’ relationship with an external target outcome.*_
+
+_*understood this above quote from the textbook*_
+
+Also, I am gonna update the working class unknown for all the unknown values. I think, this missing information is not random and contains valuable information. If I just the impute the category with the mode of the category, then this approach might lead to loss of predictive power and potentially biased model estimates.
+
+```{r}
+# Let us set up tehe variables to update the dataframe
+impute_native_country <- names(sort(table(adult_data_train$native_country),
+                                    decreasing = TRUE)[1])
+impute_occupation <- "Unknown"
+impute_workclass <- "Unknown"
+
+# Imputing the dataset - Both train and test
+
+adult_data_train$workclass[is.na(adult_data_train$workclass)] <- impute_workclass
+adult_data_train$occupation[is.na(adult_data_train$occupation)] <- impute_occupation
+adult_data_train$native_country[is.na(adult_data_train$native_country)] <- impute_native_country
+
+#-----Imputing the same valeus in the test data to prevent data leakage
+adult_data_test$workclass[is.na(adult_data_test$workclass)] <- impute_workclass
+adult_data_test$occupation[is.na(adult_data_test$occupation)] <- impute_occupation
+adult_data_test$native_country[is.na(adult_data_test$native_country)] <- impute_native_country
+
+```
+
+##### 5. (3pt) The variable native-country is sparse, meaning it has too many levels, where some levels occur infrequently. Most machine learning algorithms do not work well with spares data. One-hot-encoding or dummy coding of these variables will increase feature dimensions significantly and typically some preprocessing is required to reduce the number of levels. One approach is to group together the levels which occur infrequently. For instance, one could combine together countries with less than 0.1% occurrence in the data to an “other” category. Another possibility is to use domain knowledge; for instance, combine countries based on their geographic location ( “Middle East”, “East-Europe”, “West-Europe”, etc. In a subsequent assignment we will use “feature hashing” which is yet another way to deal with sparse data but for now, please read the section on Making use of sparse data (remapping sparse categorical data) in chapter 13 of the textbook Machine learning with R. Then combine some of the infrequent levels of the native-country. You can decide whether you want to combine the levels based on frequency or domain knowledge. Either one is fine for this assignment but preference will be with a choice that would increase the cross validation performance of the ML models you will train subsequently.
+
+
+Let us check all the countries in the dataset.
+
+```{r}
+# creating regions list
+countries_categories <- list(
+  "east asia" = c(" Taiwan", " China", " Japan", " Hong"),
+  "south asia" = c(" India"),
+  "south east asia" = c(" Philippines" , " Cambodia", " Thailand", " Laos", " Vietnam" ),
+  "middle east" = c(" Iran"),
+  "east europe" = c(" Poland", " Yugoslavia", " Hungary"),
+  "west eurpoe" = c(" England", " Germany", " Italy", " Portugal", " France", " Scotland", " Greece", " Ireland", " Holand-Netherlands"),
+  "north america and territories" = c(" United-States"," Puerto-Rico" ," Canada", " Outlying-US(Guam-USVI-etc)" ),
+  "south america" = c(),
+  "latin america" = c(" Cuba"," Jamaica"," Mexico"," Honduras"," Columbia", " Ecuador" , " Haiti", " Dominican-Republic" , 
+                      " El-Salvador", " Guatemala", " Peru" , " Trinadad&Tobago", " Nicaragua"),
+  "east africa" = c(),
+  "west africa" = c(),
+  "north africa" = c(),
+  "south africa" = c(),
+  "oceania" = c(" South")
+)
+
+# Creating a unction to map countries to theri regiojs
+get_region_fn <- function(country) {
+  for (region_name in names(countries_categories)) {
+    if (country %in% countries_categories[[region_name]]) {
+      return(region_name)
+    }
+  }
+  return("Other")
+}
+
+```
+
+
+```{r}
+# let us update the data values in the feature
+adult_data_train$native_country <- sapply(adult_data_train$native_country, get_region_fn)
+
+# also in test data
+adult_data_test$native_country <- sapply(adult_data_test$native_country, get_region_fn)
+
+## --test--
+print(unique(adult_data_train$native_country))
+```
+
+##### 6. (3pt) Use appropriate plots and statistic tests to find which variables in the dataset are associated with “income”. Remove the variable(s) that are not associated with income.
+
+For this I have to check the str and make necessary data type chnges. For this I am gonna reuse the codes from my previous assignments.
+
+```{r}
+# ---test---
+str(adult_data_train)
+str(adult_data_test)
+```
+
+```{r}
+# Code resued from my Assignemnetn 2 solution
+numeric_cols <- colnames(adult_data_train)[sapply(adult_data_train, is.numeric)]
+factor_cols <- colnames(adult_data_train)[sapply(adult_data_train, is.factor)]
+character_cols <- colnames(adult_data_train)[sapply(adult_data_train, is.character)]
+
+# Checking the column names
+cat("Numeric columns: \n------\n", paste(numeric_cols, collapse = ", "), "\n")
+cat("Factor columns: \n------\n", paste(factor_cols, collapse = ", "), "\n")
+cat("Character columns: \n------\n", paste(character_cols, collapse = ", "), "\n")
+```
+Let us make them all nominal factor variables.
+
+```{r}
+# Let us make them factor variables in both train and test data sets
+for(cc in character_cols) {
+  adult_data_train[, cc] <- factor(adult_data_train[, cc])
+  adult_data_test[, cc] <- factor(adult_data_test[, cc])
+}
+```
+
+```{r}
+# Code resued from my Assignemnetn 2 solution
+numeric_cols <- colnames(adult_data_train)[sapply(adult_data_train, is.numeric)]
+factor_cols <- colnames(adult_data_train)[sapply(adult_data_train, is.factor)]
+character_cols <- colnames(adult_data_train)[sapply(adult_data_train, is.character)]
+
+# Checking the column names
+cat("Numeric columns: \n------\n", paste(numeric_cols, collapse = ", "), "\n")
+cat("Factor columns: \n------\n", paste(factor_cols, collapse = ", "), "\n")
+cat("Character columns: \n------\n", paste(character_cols, collapse = ", "), "\n")
+```
+
+```{r}
+# Once again reusing code from the previous assignements
+
+## Reused My Code from the Assignment 1 - automation
+## and made it into a function
+
+# Nuerical vs Categ(2 types) - Two test 
+diagnose_association_numerical <- function(df, 
+                                           numer_vars, 
+                                           target_var, 
+                                           signif_val = 0.05) {
+  numer_p_value_dataframe <- data.frame()
+  for(v in numer_vars){
+    
+    print(paste("*************",v,"*************",sep= ""))
+    plot(df[,v]~df[, target_var], 
+       col="green", 
+       main = paste("Box Plot - ",target_var," vs. ",v, sep = ""),
+       xlab = target_var,
+       ylab = v)
+    
+    # t.test - to test whether a categorical variable with two levels is
+    # independent of a continuous numerical variable
+    numer_Test_details = t.test(df[,v] ~ df[,target_var], 
+                                alternative = "two.sided")
+    print(numer_Test_details)
+    numer_p_value_dataframe <- rbind(
+      numer_p_value_dataframe,
+      data.frame(feature1 = target_var,
+                 feature2 = v,
+                 p.value = numer_Test_details["p.value"],
+                 test_name = "ttest"))
+    }
+  
+  numer_p_value_dataframe$signif <- signif_val
+  numer_p_value_dataframe$result <- (
+    ifelse(
+      numer_p_value_dataframe$p.value < numer_p_value_dataframe$signif,
+      "pass", "fail" ))
+  
+  return(numer_p_value_dataframe)
+  
+}
+
+# Categorical vs Categoricl - ChiSQ Test
+diagnose_association_factor <- function(df,
+                                        factor_vars, 
+                                        target_var,
+                                        signif_val = 0.05) {
+  
+  factor_p_value_dataframe <- data.frame()
+  for(v in factor_vars[(!factor_vars %in% c(target_var))]){
+    print(paste("--------------------",v,"--------------------"))
+    ctable <- table(df[, v], df[, target_var])
+    mosaicplot(ctable,
+               ylab = target_var,
+               xlab = v,
+               main = paste("Mosaic graph of",target_var,"vs",v,sep = " "))
+    print(chisq.test(ctable))
+    factor_Test_details = chisq.test(ctable)
+    factor_p_value_dataframe <- rbind(
+      factor_p_value_dataframe,
+      data.frame(feature1 = target_var,
+                 feature2 = v,
+                 p.value = factor_Test_details["p.value"],
+                 test_name = "chisq"))
+    }
+  
+  factor_p_value_dataframe$signif <- signif_val
+  factor_p_value_dataframe$result <- (
+    ifelse(
+      factor_p_value_dataframe$p.value < factor_p_value_dataframe$signif,
+      "pass", "fail" ))
+  
+  return(factor_p_value_dataframe)
+}
+
+target_DV = "income"
+
+assoc_num_df <- diagnose_association_numerical(df = adult_data_train, 
+                                               numer_vars = numeric_cols,
+                                               target_var = target_DV)
+assoc_fac_df <- diagnose_association_factor(df = adult_data_train, 
+                                            factor_vars = factor_cols,
+                                            target_var = target_DV)
+
+
+qualified_features_data <- assoc_num_df %>% rbind.data.frame(assoc_fac_df)
+
+qualified_features_data
+```
+```{r}
+# Removing the variable from the 
+unqualified_feature <- qualified_features_data[(qualified_features_data$result == "fail"), "feature2"]
+
+# Discarding that feature
+adult_data_train <- adult_data_train %>% select(-one_of(unqualified_feature))
+adult_data_test <- adult_data_test %>% select(-one_of(unqualified_feature))
+```
+
+
+##### 7. (2pt) Train a logistic regression model on the train data (preprocessed and transformed using above steps) using the glm package and use it to predict “income” for the test data. Note: As explained in the lectures, “predict” method will return predicted probabilities. To convert them to labels, you need to use some threshold ( typically set as 50%) and if the predicted probability is greater than 50% you predict income>50K; otherwise predict income<=50K ( please review the example in lecture 7.2).
+
+
+```{r}
+# Training the model
+log_reg_model <- glm(income~., data = adult_data_train, family = "binomial")
+
+summary(log_reg_model)
+```
+
+```{r}
+# Testing the model on the test dataset
+log_reg_prdiction <- predict(object = log_reg_model, adult_data_test, type = "response")
+head(log_reg_prdiction)
+```
+```{r}
+# Let us check the prodcitions
+log_reg_predicted_label = ifelse(log_reg_prdiction > 0.5, " >50K", " <=50K")
+
+# Checimng hte prediciton
+actual_label <- adult_data_test$income
+predicted_label <- log_reg_predicted_label
+CONFUSION_MATRIX_1 = table(predicted_label, actual_label)
+
+error <- (CONFUSION_MATRIX_1[1,2]+CONFUSION_MATRIX_1[2,1]) / sum(CONFUSION_MATRIX_1)
+```
+
+```{r}
+# RE USING CODES FROM THE OLD ASSIGNEMNET 2
+
+performance_evaluation_fn <- function(confusion_matrix) {
+  
+  # Extract the values from the confusion matrix
+  true_negative <- confusion_matrix[1, 1]  # Actual 'no', Predicted 'no' - TN
+  false_positive <- confusion_matrix[1, 2] # Actual 'no', Predicted 'yes' - FP
+  false_negative <- confusion_matrix[2, 1] # Actual 'yes', Predicted 'no' - FN
+  true_positive <- confusion_matrix[2, 2]  # Actual 'yes', Predicted 'yes' - TP
+  
+  Precision_Value = true_positive/ (true_positive + false_positive)
+  Recall_Value = true_positive/ (true_positive + false_negative)
+  Error_Value = (false_positive + false_negative) / sum(confusion_matrix)
+  
+  return(list("Error_Value" = Error_Value, "Precision_Value" = Precision_Value, "Recall_Value" = Recall_Value))
+}
+
+log_reg_performance <- performance_evaluation_fn(confusion_matrix = CONFUSION_MATRIX_1)
+print(log_reg_performance)
+
+```
+
+
+##### 9.(3pt) The target variable “income” is imbalanced; the number of adults who make <=50 is three times more than the number of adults who make >50K. Most classification models trained on imbalanced data are biased towards predicting the majority class ( income<=50K in this case) and yield a higher classification error on the minority class (income >50K).
+
+###### One way to deal with class imbalance problem is to down-sample the majority class; meaning randomly sample the observations in the majority class to make it the same size as the minority class.
+###### The downside of this approach is that for smaller datasets, removing data will result in significant loss of information and lower performance. In Module 12, we will learn about other techniques to deal with data imbalance without removing information, but for this assignment, we use down- sampling in an attempt to address data imbalance.
+###### Note: Down-sampling should only be done on the training data and the test data should have the original imbalance distribution. You can downsample as follows:
+
+* Divide your training data into two sets, adults who make <=50K and the ones who make >50K.
+
+
+* Suppose that the >50K set has m elements. Take a sample of size m from the <=50K set.
+    
+    + You can use “sample” from the base package to sample the rows or alternatively, you can use the method “sample_n” from dplyr package to directly sample the dataframe
+
+* Combine the above sample with the >50K set. You can use “rbind” function to combine the rows in two or more dataframes. This will give you a balanced training data with the same observations in >50K and <=50K classes.
+
+* Re-train the logistic regression model on the balanced training data and evaluate it on the test data. Compare the total error, precision, and recall for the <=50K class and >=50K classes with the previous model. Which model does better at predicting each class?
+
+I am going to use all the codes in the same R code chunk.
+
+```{r}
+# Splitting the training data set
+adult_data_train_high_income <- adult_data_train %>% filter(income == " >50K") 
+adult_data_train_low_income <- adult_data_train %>% filter(income == " <=50K") 
+
+# Shuffling the records
+adult_data_train_low_income <- adult_data_train_low_income %>% sample_n(nrow(adult_data_train_high_income), replace = TRUE)
+
+# train data balanced
+adult_data_train_2 <- adult_data_train_high_income %>% rbind.data.frame(adult_data_train_low_income)
+
+# Training the model for the balanced dataset
+log_reg_model_2 <- glm(income~., data = adult_data_train_2, family = "binomial")
+
+# Summary if the model
+summary(log_reg_model_2)
+
+# Testing the model on the test dataset
+log_reg_prdiction_2 <- predict(object = log_reg_model_2, adult_data_test, type = "response")
+head(log_reg_prdiction_2)
+
+
+# Let us check the prodcitions
+log_reg_predicted_label_2 = ifelse(log_reg_prdiction_2 > 0.5, " >50K", " <=50K")
+
+# Checimng hte prediciton
+actual_label <- adult_data_test$income
+predicted_label <- log_reg_predicted_label_2
+CONFUSION_MATRIX_2 = table(predicted_label, actual_label)
+
+error <- (CONFUSION_MATRIX_2[1,2]+CONFUSION_MATRIX_2[2,1]) / sum(CONFUSION_MATRIX_2)
+
+# Final Performances
+log_reg_performance_2 <- performance_evaluation_fn(confusion_matrix = CONFUSION_MATRIX_2)
+print(log_reg_performance_2)
+```
+
+##### 10. (3pt) Repeat steps 7-9 above but this time, use a C5.0 decision tree model to predict “income” instead of the logistic regression model (use trials=30 for boosting multiple decision trees (see an example in slide 44, module 6) . Compare the logistic regression model with the boosted C5.0 model.
+
+I am going to use the same set if features and reuse the code chunks from the lecture notes. On with imbalanced dataset and another modeling exercise with balanced dataset. Allsteps form 7-9 wil be combined in one code chunk. Since we have 2 types of training datasets : balanced and imbalanced, we will use both of them.
+
+```{r}
+# Let us perform decision tree modeling
+
+# Imbalanced Data set
+decision_tree_boost_model <- C5.0(x = adult_data_train %>% select(-one_of("income")), 
+                                  adult_data_train$income, 
+                                  trials = 30)
+decision_tree_boost_prediction <- predict(decision_tree_boost_model, adult_data_test)
+
+# Balanced Dataset 
+decision_tree_boost_model_2 <- C5.0(x = adult_data_train_2 %>% select(-one_of("income")), 
+                                    adult_data_train_2$income, 
+                                    trials = 30)
+decision_tree_boost_prediction_2 <- predict(decision_tree_boost_model_2, adult_data_test)
+
+
+# Checimng hte prediciton
+actual_label <- adult_data_test$income
+predicted_label <- decision_tree_boost_prediction
+predicted_label_2 <- decision_tree_boost_prediction_2
+CONFUSION_MATRIX_3 = table(predicted_label, actual_label)
+CONFUSION_MATRIX_4 = table(predicted_label_2, actual_label)
+
+# Final Performances
+decision_tree_boost_performance <- performance_evaluation_fn(confusion_matrix = CONFUSION_MATRIX_3)
+decision_tree_boost_performance_2 <- performance_evaluation_fn(confusion_matrix = CONFUSION_MATRIX_4)
+
+# Final values
+print(decision_tree_boost_performance)
+print(decision_tree_boost_performance_2)
+
+
+```
+
+```{r}
+rm(list = setdiff(ls(), c("variable1", "variable2")))
+```
+

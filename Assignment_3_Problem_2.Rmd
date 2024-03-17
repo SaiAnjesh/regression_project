@@ -339,12 +339,15 @@ set.seed(123)
 number_of_predictors <- ncol(student_mat_data_train) - 1
 
 train.control <- trainControl(method = "cv", number = 10)
+tune.grid <- data.frame(nvmax = c(1 : number_of_predictors))
+wrapper_method = "leapBackward"
 
 step.model <- train(G3 ~., 
                     data = student_mat_data_train,
-                    method = "leapBackward",
-                    trControl = train.control,
-                    tuneGrid = data.frame(nvmax = 1:number_of_predictors))
+                    method = wrapper_method,
+                    tuneGrid = tune.grid,
+                    trControl = train.control
+                    )
 
 
 
