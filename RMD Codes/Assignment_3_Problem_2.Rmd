@@ -81,40 +81,45 @@ cat("Character columns: \n------\n", paste(character_cols, collapse = ", "), "\n
 Since we don't have factor variables hence let us make all the character variables to factor variables.
 
 ```{r}
-# Let us select each character variable and make it a factor variable
-student_mat_data[["school"]] <- factor(student_mat_data[["school"]], levels = c("GP","MS"))
+# # Let us select each character variable and make it a factor variable
+# student_mat_data[["school"]] <- factor(student_mat_data[["school"]], levels = c("GP","MS"))
+# 
+# student_mat_data[["sex"]] <- factor(student_mat_data[["sex"]], levels = c("F","M"))
+# 
+# student_mat_data[["address"]] <- factor(student_mat_data[["address"]], levels = c("U","R"))
+# 
+# student_mat_data[["famsize"]] <- factor(student_mat_data[["famsize"]], 
+#                                         levels = c("GT3","LE3"))
+# 
+# student_mat_data[["Pstatus"]] <- factor(student_mat_data[["Pstatus"]], levels = c("T","A"))
+# 
+# student_mat_data[["Mjob"]] <- factor(student_mat_data[["Mjob"]], 
+#                                      levels = c("at_home","health","other",
+#                                                 "services","teacher"))
+# 
+# student_mat_data[["Fjob"]] <- factor(student_mat_data[["Fjob"]], 
+#                                      levels = c("teacher","other","services",
+#                                                 "health" ,"at_home"))
+# 
+# student_mat_data[["reason"]] <- factor(student_mat_data[["reason"]], 
+#                                      levels = c("course","other","home","reputation"))
+# 
+# student_mat_data[["guardian"]] <- factor(student_mat_data[["guardian"]],
+#                                          levels = c( "mother","father","other"))
+# 
+# ## Yes / no variables
+# 
+# yes_no_variables <- c("schoolsup", "famsup", "paid", 
+#                       "activities", "nursery", "higher", 
+#                       "internet", "romantic")
+# for(col_val in yes_no_variables) {
+#   student_mat_data[[col_val]] <- factor(student_mat_data[[col_val]], 
+#                                         levels = c( "no", "yes"))
+# }
 
-student_mat_data[["sex"]] <- factor(student_mat_data[["sex"]], levels = c("F","M"))
-
-student_mat_data[["address"]] <- factor(student_mat_data[["address"]], levels = c("U","R"))
-
-student_mat_data[["famsize"]] <- factor(student_mat_data[["famsize"]], 
-                                        levels = c("GT3","LE3"))
-
-student_mat_data[["Pstatus"]] <- factor(student_mat_data[["Pstatus"]], levels = c("T","A"))
-
-student_mat_data[["Mjob"]] <- factor(student_mat_data[["Mjob"]], 
-                                     levels = c("at_home","health","other",
-                                                "services","teacher"))
-
-student_mat_data[["Fjob"]] <- factor(student_mat_data[["Fjob"]], 
-                                     levels = c("teacher","other","services",
-                                                "health" ,"at_home"))
-
-student_mat_data[["reason"]] <- factor(student_mat_data[["reason"]], 
-                                     levels = c("course","other","home","reputation"))
-
-student_mat_data[["guardian"]] <- factor(student_mat_data[["guardian"]],
-                                         levels = c( "mother","father","other"))
-
-## Yes / no variables
-
-yes_no_variables <- c("schoolsup", "famsup", "paid", 
-                      "activities", "nursery", "higher", 
-                      "internet", "romantic")
-for(col_val in yes_no_variables) {
-  student_mat_data[[col_val]] <- factor(student_mat_data[[col_val]], 
-                                        levels = c( "no", "yes"))
+# Making all the cahracter variables to factors, I don't want them to have levels.
+for(cc in character_cols) {
+  student_mat_data[, cc] <- factor(student_mat_data[, cc])
 }
 
 
@@ -340,6 +345,7 @@ number_of_predictors <- ncol(student_mat_data_train) - 1
 
 train.control <- trainControl(method = "cv", number = 10)
 tune.grid <- data.frame(nvmax = c(1 : number_of_predictors))
+# tune.grid <- data.frame(nvmax = c(4 : number_of_predictors))
 wrapper_method = "leapBackward"
 
 step.model <- train(G3 ~., 
@@ -354,20 +360,59 @@ step.model <- train(G3 ~.,
 
 ```
 
+TESTING LEAFFORWARD
+
+```{r}
+number_of_predictors2 <- ncol(student_mat_data_train) - 1
+
+train.control2 <- trainControl(method = "cv", number = 10)
+tune.grid2 <- data.frame(nvmax = c(1 : number_of_predictors))
+wrapper_method2 = "leapForward"
+
+step.model2 <- train(G3 ~., 
+                    data = student_mat_data_train,
+                    method = wrapper_method2,
+                    tuneGrid = tune.grid2,
+                    trControl = train.control2
+                    )
+
+print(step.model2)
+
+summary(step.model2)
+
+summary(step.model2$finalModel)
+
+# Coefficient names and values
+coef_names2 <- names(coef(step.model2$finalModel, id = 9))
+coef_values2 <- coef(step.model2$finalModel, id = 9)
+
+# Performance metrics
+rmse2 <- step.model2$results$RMSE
+
+# Create dataframe
+model_summary2 <- data.frame(
+  Coefficient_Names = coef_names2,
+  Coefficient_Values = coef_values2
+  # RMSE = rmse2
+)
+
+```
+
+
 Let us check the model and its summary.
 
 ```{r}
 # Checking the model
-# print(step.model)
+print(step.model)
 
-# summary(step.model)
+summary(step.model)
 
-# summary(step.model$finalModel)
+summary(step.model$finalModel)
 
 
 # Coefficient names and values
-coef_names <- names(coef(step.model$finalModel, id = 1))
-coef_values <- coef(step.model$finalModel, id = 1)
+coef_names <- names(coef(step.model$finalModel, id = 8))
+coef_values <- coef(step.model$finalModel, id = 8)
 
 # Performance metrics
 rmse <- step.model$results$RMSE
@@ -375,8 +420,8 @@ rmse <- step.model$results$RMSE
 # Create dataframe
 model_summary <- data.frame(
   Coefficient_Names = coef_names,
-  Coefficient_Values = coef_values,
-  RMSE = rmse
+  Coefficient_Values = coef_values
+  # RMSE = rmse
 )
 
 # Print the dataframe
