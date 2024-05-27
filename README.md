@@ -23,14 +23,14 @@
 
 9. (3pt) The target variable “income” is imbalanced; the number of adults who make <=50 is three times more than the number of adults who make >50K. Most classification models trained on imbalanced data are biased towards predicting the majority class ( income<=50K in this case) and yield a higher classification error on the minority class (income >50K). One way to deal with class imbalance problem is to down-sample the majority class; meaning randomly sample the observations in the majority class to make it the same size as the minority class. The downside of this approach is that for smaller datasets, removing data will result in significant loss of information and lower performance. In Module 12, we will learn about other techniques to deal with data imbalance without removing information, but for this assignment, we use down- sampling in an attempt to address data imbalance. Note: Down-sampling should only be done on the training data and the test data should have the original imbalance distribution. You can downsample as follows:
 
-  * Divide your training data into two sets, adults who make <=50K and the ones who make >50K.
+   * Divide your training data into two sets, adults who make <=50K and the ones who make >50K.
   
-  * Suppose that the >50K set has m elements. Take a sample of size m from the <=50K set.
-    * You can use “sample” from the base package to sample the rows or alternatively, you can use the method “sample_n” from dplyr package to directly sample the dataframe
+   * Suppose that the >50K set has m elements. Take a sample of size m from the <=50K set.
+     * You can use “sample” from the base package to sample the rows or alternatively, you can use the method “sample_n” from dplyr package to directly sample the dataframe
   
-  * Combine the above sample with the >50K set. You can use “rbind” function to combine the rows in two or more dataframes. This will give you a balanced training data with the same observations in >50K and <=50K classes.
+   * Combine the above sample with the >50K set. You can use “rbind” function to combine the rows in two or more dataframes. This will give you a balanced training data with the same observations in >50K and <=50K classes.
   
-  * Re-train the logistic regression model on the balanced training data and evaluate it on the test data. Compare the total error, precision, and recall for the <=50K class and >=50K classes with the previous model. Which model does better at predicting each class?
+   * Re-train the logistic regression model on the balanced training data and evaluate it on the test data. Compare the total error, precision, and recall for the <=50K class and >=50K classes with the previous model. Which model does better at predicting each class?
 
 10. (3pt) Repeat steps 7-9 above but this time, use a C5.0 decision tree model to predict “income” instead of the logistic regression model (use trials=30 for boosting multiple decision trees (see an example in slide 44, module 6) . Compare the logistic regression model with the boosted C5.0 model.
 
